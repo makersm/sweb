@@ -1,9 +1,5 @@
 # sweb
 
-Somin's web server that just send file by url.
+Somin's web server that show url history by client ip.
 
-For example:
-```url
-http://example.com:portnum/server.c
-```
-sweb send `server.c`file.
+Because it just store data using buffer, when buffer is full, server send 503 page.
