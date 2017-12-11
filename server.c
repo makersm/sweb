@@ -12,6 +12,7 @@
 #include <fcntl.h>
 
 int epoll = -1;
+/* char response_body[8192] = {}; */
 
 struct io_event {
 	int fd;
@@ -26,6 +27,9 @@ struct http_request_info {
 	char* user_agent;
 	char* accept;
 };
+
+int history() {
+}
 
 int client_echo(struct epoll_event* a_event) {
 	struct io_event* event = a_event->data.ptr;
@@ -65,12 +69,17 @@ int client_echo(struct epoll_event* a_event) {
 	char response_header[] = "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n";
 	uint8_t response_body[8192] = {};
 
+	/* strcat(response_body, req.url); */
+	/* strcat(response_body, "\r\n"); */
+
 	int resource = open(req.url + 1, O_RDONLY);
 	if(resource == -1) {
 		char response_404[] = "404 Not Found\r\n";
 		write(event->fd, response_header, sizeof(response_header)-1);
 		write(event->fd, response_404, sizeof(response_404)-1);
 		close(event->fd);
+
+		free(event);
 		return 1;
 	}
 	read(resource, response_body, sizeof(response_body));
@@ -79,6 +88,7 @@ int client_echo(struct epoll_event* a_event) {
 	write(event->fd, response_header, sizeof(response_header)-1);
 	write(event->fd, response_body, sizeof(response_body)-1);
 	close(event->fd);
+	free(event);
 
 	return 0;
 }
@@ -99,10 +109,10 @@ int server_accept(struct epoll_event* a_event) {
 	client_context->fd = client;
 	client_context->event_handler = client_echo;
 
-	struct epoll_event* client_event = calloc(1, sizeof(struct epoll_event));
-	client_event->events = EPOLLIN;
-	client_event->data.ptr = client_context;
-	epoll_ctl(epoll, EPOLL_CTL_ADD, client, client_event);
+	struct epoll_event client_event;
+	client_event.events = EPOLLIN;
+	client_event.data.ptr = client_context;
+	epoll_ctl(epoll, EPOLL_CTL_ADD, client, &client_event);
 
 	return 0;
 }
@@ -152,10 +162,10 @@ int main(int argc, char *argv[])
 	server_on_accept->fd = server_fd;
 	server_on_accept->event_handler = server_accept;
 
-	struct epoll_event* server_context = calloc(1, sizeof(struct epoll_event));
-	server_context->events = EPOLLIN;
-	server_context->data.ptr = server_on_accept;
-	epoll_ctl(epoll, EPOLL_CTL_ADD, server_fd, server_context);
+	struct epoll_event server_context;
+	server_context.events = EPOLLIN;
+	server_context.data.ptr = server_on_accept;
+	epoll_ctl(epoll, EPOLL_CTL_ADD, server_fd, &server_context);
 
 
 	while(1) {
